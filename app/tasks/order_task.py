@@ -1,10 +1,12 @@
 from celery import Celery
 from app.core.config import settings
+import time
 
-celery_app = Celery('orders', 
+celery  = Celery('orders', 
                     broker=settings.CELERY_BROKER_URL,
                     backend=settings.CELERY_RESULT_BACKEND)
 
-@celery_app.task
-def process_order(order_data):
-    print(f"Processing order: {order_data}")
+@celery.task
+def process_order(order_id):
+    time.sleep(2)
+    print(f"Order {order_id} processed")

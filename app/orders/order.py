@@ -43,9 +43,18 @@ async def create_order(
         await db.commit()
         await db.refresh(new_order)
 
+        order_data = {
+            'id': str(new_order.id),
+            'user_id': new_order.user_id,
+            'items': new_order.items,
+            'total_price': new_order.total_price,
+            'status': new_order.status.value,
+            'created_at': new_order.created_at.isoformat()
+        }
+
         await kafka_producer.send_and_wait(
-            'new_order_topic', 
-            json.dumps(new_order).encode('utf-8')
+            'new_orders', 
+            json.dumps(order_data).encode('utf-8')
         )
 
         return {
