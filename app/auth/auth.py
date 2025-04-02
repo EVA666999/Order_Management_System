@@ -20,16 +20,19 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from pydantic import BaseModel
 
-
-class OAuth2EmailRequestForm(OAuth2PasswordRequestForm):
-    def __init__(self, email: str = Form(...), password: str = Form(...)):
-        super().__init__(username=email, password=password)
+class OAuth2EmailRequestForm:
+    def __init__(
+        self, 
+        email: str = Form(...), 
+        password: str = Form(...)
+    ):
+        self.email = email
+        self.password = password
 
 load_dotenv()
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
-
 
 ALGORITHM = 'HS256'
 
@@ -38,9 +41,10 @@ bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
 @router.post('/')
 async def create_user(db: Annotated[AsyncSession, Depends(get_db)], create_user: CreateUser):
-    await db.execute(insert(User).values(email=create_user.email,
-                                         password=bcrypt_context.hash(create_user.password),
-                                         ))
+    await db.execute(insert(User).values(
+        email=create_user.email,
+        password=bcrypt_context.hash(create_user.password),
+    ))
     await db.commit()
     return {
         'status_code': status.HTTP_201_CREATED,
@@ -76,11 +80,10 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
 
 @router.post("/token")
 async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    form_data: Annotated[OAuth2EmailRequestForm, Depends()],
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
-    # Используем username поле для email
-    user = await authenticate_user(db, form_data.username, form_data.password)
+    user = await authenticate_user(db, form_data.email, form_data.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     
