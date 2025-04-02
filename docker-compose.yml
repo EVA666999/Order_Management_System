@@ -27,9 +27,13 @@ services:
     ports:
       - "9092:9092"
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: localhost
+      # Вместо KAFKA_ADVERTISED_HOST_NAME используем более гибкую конфигурацию
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CREATE_TOPICS: "new_orders"
+      KAFKA_CREATE_TOPICS: "new_orders:1:1"
+      # Чтобы избежать конфликта ID брокеров
+      KAFKA_BROKER_ID: 1
     depends_on:
       - zookeeper
 
@@ -54,7 +58,11 @@ services:
       - .:/app
     ports:
       - "8000:8000"
-    command: bash -c "pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    command: bash -c "pip install -r requirements.txt && 
+                    echo 'Waiting for db to be ready...' &&
+                    sleep 5 &&
+                    alembic upgrade head && 
+                    uvicorn app.main:app --host 0.0.0.0 --port 8000"
     depends_on:
       - postgres
       - redis
