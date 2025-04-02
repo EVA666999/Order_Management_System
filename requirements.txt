@@ -16,3 +16,4 @@ Celery
 redis
 gevent
 vine
+aiokafka

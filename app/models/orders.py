@@ -13,7 +13,7 @@ class OrderStatus(PyEnum):
     CANCELED = "CANCELED"
 
 
-class Order(Base):
+class Orders(Base):
     __tablename__ = "orders"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -25,4 +25,4 @@ class Order(Base):
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus), default=OrderStatus.PENDING)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    user = relationship("User", back_populates="orders")
+    user = relationship("Users", back_populates="orders")
