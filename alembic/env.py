@@ -6,7 +6,8 @@ from alembic import context
 
 # импорт моделей, чтобы они были доступны для автогенерации
 from app.database.db import Base
-from app.models.users import User  # Явный импорт моделей
+from app.models.users import User
+from app.models.orders import Order
 
 # this is the Alembic Config object
 config = context.config
