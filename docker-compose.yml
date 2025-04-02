@@ -4,7 +4,7 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_DB: test_case_db
+      POSTGRES_DB: test_case_db 
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: Kohkau11999
     volumes:
@@ -29,7 +29,7 @@ services:
     environment:
       KAFKA_ADVERTISED_HOST_NAME: localhost
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CREATE_TOPICS: "new_order:1:1"
+      KAFKA_CREATE_TOPICS: "new_orders"
     depends_on:
       - zookeeper
 
@@ -45,6 +45,7 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DB_HOST_local=postgres
 
   backend:
     image: python:3.10-slim
@@ -58,6 +59,8 @@ services:
       - postgres
       - redis
       - kafka
+    environment:
+      - DB_HOST_local=postgres
 
 volumes:
   postgres_data:
