@@ -14,6 +14,7 @@ from app.tasks.order_task import process_order
 import redis.asyncio as redis
 from app.services.kafka_service import get_kafka_producer
 from app.services.redis_service import get_redis
+from loguru import logger
 from celery import Celery
 import time
 
@@ -31,6 +32,7 @@ async def create_order(
     kafka_producer: Annotated[AIOKafkaProducer, Depends(get_kafka_producer)],
     current_user: Annotated[dict, Depends(get_current_user)]
 ):
+    logger.info(f"Creating order with data: {create_order}")
     try:
         new_order = Orders(
             user_id=current_user['id'],
@@ -55,15 +57,21 @@ async def create_order(
 
         process_order.delay(str(new_order.id))
 
-        await kafka_producer.send_and_wait(
-            'new_orders', 
-            json.dumps(order_data).encode('utf-8')
-        )
-
-        return {
+        response = {
             'detail': 'Order created successfully',
             'id': new_order.id
         }
+
+        try:
+            await kafka_producer.send_and_wait(
+                'new_orders', 
+                json.dumps(order_data).encode('utf-8')
+            )
+        except Exception as kafka_error:
+            logger.error(f"Error sending to Kafka: {kafka_error}")
+            # Не прерываем работу, просто логируем ошибку
+        
+        return response
     except Exception as e:
         await db.rollback()
         raise HTTPException(
