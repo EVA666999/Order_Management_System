@@ -10,6 +10,7 @@ import uvicorn
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from app.auth.auth import get_current_user
+from app.tasks.order_task import process_order
 import redis.asyncio as redis
 from app.services.kafka_service import get_kafka_producer
 from app.services.redis_service import get_redis
@@ -51,6 +52,8 @@ async def create_order(
             'status': new_order.status.value,
             'created_at': new_order.created_at.isoformat()
         }
+
+        process_order.delay(str(new_order.id))
 
         await kafka_producer.send_and_wait(
             'new_orders', 
