@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, Form, Request, status, HTTPException
 from sqlalchemy import select, insert
 from typing import Annotated
-from app.rate_limiter import limiter
+from app.rate_limiter import limiter, log_limit_exceeded
 from slowapi.errors import RateLimitExceeded
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -67,7 +67,8 @@ async def login_for_access_token(
     request: Request,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[AsyncSession, Depends(get_db)]
-):
+):  
+    log_limit_exceeded(request)
     # Используем username как email
     user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:
@@ -83,10 +84,3 @@ async def login_for_access_token(
 @limiter.limit("5/minute")
 async def read_users_me(request: Request, current_user: Annotated[dict, Depends(get_current_user)]):
     return current_user
-
-@router.exception_handler(RateLimitExceeded)
-async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    return JSONResponse(
-        status_code=429,
-        content={"error": "Too Many Requests"}
-    )
