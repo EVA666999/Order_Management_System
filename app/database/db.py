@@ -1,7 +1,5 @@
-import asyncio
 import os
-from sqlalchemy import create_engine, insert, select, text
-from sqlalchemy.orm import sessionmaker, DeclarativeBase, relationship
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from dotenv import load_dotenv
 

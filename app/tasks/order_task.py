@@ -1,7 +1,6 @@
 from celery import Celery
 from app.core.config import settings
 import time
-import logging
 
 # Создаем объект Celery
 celery_app = Celery(

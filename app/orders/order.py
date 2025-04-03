@@ -1,42 +1,46 @@
+"""
+Orders module - API для управления заказами в системе.
+"""
 from datetime import datetime
 import json
+from typing import Annotated, Dict, Any
+from uuid import UUID
+
 from aiokafka import AIOKafkaProducer
 from fastapi import APIRouter, Depends, Request, status, HTTPException
-from sqlalchemy.orm import Session
-from typing import Annotated
-from sqlalchemy import and_, delete, insert, or_, select, update
-from slugify import slugify
-import uvicorn
-from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
-from app.auth.auth import get_current_user
-from app.tasks.order_task import process_order
+from fastapi_limiter.depends import RateLimiter
+from loguru import logger
 import redis.asyncio as redis
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
+
+from app.auth.auth import get_current_user
+from app.database.db_depends import get_db
+from app.models.orders import Orders
+from app.schemas import CreateOrder, UpdateStatus
 from app.services.kafka_service import get_kafka_producer
 from app.services.redis_service import get_redis
-from loguru import logger
-from celery import Celery
-from app.rate_limiter import limiter
-import time
+from app.tasks.order_task import process_order
 
-from app.database.db_depends import get_db
-from app.schemas import CreateOrder, UpdateStatus
-from aiokafka import AIOKafkaProducer
-from app.models.orders import Orders
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
-@limiter.limit("5/minute")
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(RateLimiter(times=15, seconds=60))],
+    summary="Создание нового заказа"
+)
 async def create_order(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     create_order: CreateOrder,
     kafka_producer: Annotated[AIOKafkaProducer, Depends(get_kafka_producer)],
     current_user: Annotated[dict, Depends(get_current_user)],
-):
-    logger.info(f"Order creation request from IP: {request.client.host}")
+) -> Dict[str, Any]:
+    """Создает новый заказ и запускает его обработку"""
     try:
         new_order = Orders(
             user_id=current_user["id"],
@@ -60,7 +64,6 @@ async def create_order(
         }
 
         process_order.delay(str(new_order.id))
-
         response = {"detail": "Order created successfully", "id": new_order.id}
 
         try:
@@ -69,7 +72,6 @@ async def create_order(
             )
         except Exception as kafka_error:
             logger.error(f"Error sending to Kafka: {kafka_error}")
-            # Не прерываем работу, просто логируем ошибку
 
         return response
     except Exception as e:
@@ -80,15 +82,20 @@ async def create_order(
         )
 
 
-@limiter.limit("20/minute")
-@router.get("/{order_id}", status_code=200)
+@router.get(
+    "/{order_id}",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(RateLimiter(times=20, seconds=60))],
+    summary="Получение информации о заказе"
+)
 async def get_order(
     request: Request,
     order_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     redis_client: Annotated[redis.Redis, Depends(get_redis)],
     current_user: Annotated[dict, Depends(get_current_user)],
-):
+) -> Dict[str, Any]:
+    """Получает заказ по ID с использованием кэширования"""
     cached_order = await redis_client.get(f"order:{order_id}")
     if cached_order:
         return json.loads(cached_order)
@@ -112,15 +119,20 @@ async def get_order(
     return order_dict
 
 
-@limiter.limit("5/minute")
-@router.put("/{order_id}")
+@router.put(
+    "/{order_id}",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(RateLimiter(times=10, seconds=60))],
+    summary="Обновление статуса заказа"
+)
 async def update_product(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
     order_id: UUID,
     update_status: UpdateStatus,
     current_user: Annotated[dict, Depends(get_current_user)],
-):
+) -> Dict[str, str]:
+    """Обновляет статус существующего заказа"""
     order = await db.scalar(
         select(Orders).where(
             Orders.id == order_id, Orders.user_id == current_user["id"]
@@ -143,18 +155,25 @@ async def update_product(
     return {"detail": "Product updated successfully"}
 
 
-@limiter.limit("5/minute")
-@router.get("/user/{user_id}/")
-async def get_reviews_for_product(
+@router.get(
+    "/user/{user_id}/",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(RateLimiter(times=20, seconds=60))],
+    summary="Получение заказов пользователя"
+)
+async def get_orders_for_user(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     user_id: int,
 ):
+    """Возвращает все заказы указанного пользователя"""
     orders = await db.scalars(select(Orders).where(Orders.user_id == user_id))
-    orders = orders.all()
-    if not orders:
+    orders_list = orders.all()
+    
+    if not orders_list:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No orders for user_id: {user_id}",
         )
-    return orders
+    
+    return orders_list

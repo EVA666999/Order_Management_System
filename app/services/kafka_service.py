@@ -1,4 +1,4 @@
-from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
+from aiokafka import AIOKafkaProducer
 from app.core.config import settings
 
 

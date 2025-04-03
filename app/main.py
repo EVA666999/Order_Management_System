@@ -1,24 +1,22 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.auth import auth, register
 from app.orders import order
+import redis.asyncio as redis
+from fastapi_limiter import FastAPILimiter
+from app.core.config import settings
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from loguru import logger
 
-from .rate_limiter import limiter
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+    await FastAPILimiter.init(redis_client)
 
-app = FastAPI()
+    yield
 
-@app.exception_handler(RateLimitExceeded)
-async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
-    return _rate_limit_exceeded_handler(request, exc)
 
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
