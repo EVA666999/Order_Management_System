@@ -13,8 +13,7 @@ from slowapi.errors import RateLimitExceeded
 from celery import Celery
 from fastapi import BackgroundTasks
 from fastapi.responses import JSONResponse
-
-limiter = Limiter(key_func=get_remote_address)
+from .rate_limiter import limiter
 
 app = FastAPI()
 

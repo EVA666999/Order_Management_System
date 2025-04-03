@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, Form, status, HTTPException
 from sqlalchemy import select, insert
 from typing import Annotated
-from app.main import limiter
+from app.rate_limiter import limiter
 from sqlalchemy.orm import Session
 
 from datetime import datetime, timedelta, timezone
@@ -60,7 +60,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
 @router.post("/")
-@limiter.limit("5/минуту")
+@limiter.limit("5/minute")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[AsyncSession, Depends(get_db)]

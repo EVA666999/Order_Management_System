@@ -26,7 +26,7 @@ from app.models.orders import Orders
 
 router = APIRouter(prefix='/orders', tags=['orders'])
 
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 @router.post('/', status_code=status.HTTP_201_CREATED)
 async def create_order(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -81,7 +81,7 @@ async def create_order(
             detail=f"Error creating order: {str(e)}"
         )
 
-@limiter.limit("5/minute")
+@limiter.limit("20/minute")
 @router.get("/{order_id}", status_code=200)
 async def get_order(
     order_id: UUID,
