@@ -7,17 +7,8 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-def custom_key_func(request: Request):
-    client_ip = request.client.host
-    logger.debug(f"Rate limit request from IP: {client_ip}")
-    return client_ip
-
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["100/minute"],
-    retry_after="human_readable"
+    retry_after="human_readable",
 )
-
-
-def log_limit_exceeded(request):
-    logger.warning(f"Rate limit exceeded for {request.client.host}")

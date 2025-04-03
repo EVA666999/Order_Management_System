@@ -22,5 +22,6 @@ class CreateOrder(BaseModel):
     status: OrderStatus = OrderStatus.PENDING
     created_at: datetime = datetime.utcnow()
 
+
 class UpdateStatus(BaseModel):
     status: OrderStatus = OrderStatus.PENDING

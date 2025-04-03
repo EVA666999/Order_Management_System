@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, Form, Request, status, HTTPException
 from sqlalchemy import select, insert
 from typing import Annotated
-from app.rate_limiter import limiter, log_limit_exceeded
+from app.rate_limiter import limiter
 from slowapi.errors import RateLimitExceeded
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -24,15 +24,16 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 load_dotenv()
 
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv("SECRET_KEY")
 # Важно: tokenUrl должен соответствовать реальному пути к эндпоинту токена
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
-ALGORITHM = 'HS256'
+ALGORITHM = "HS256"
 
 # Измените префикс роутера на '/auth'
-router = APIRouter(prefix='/token', tags=['authentication'])
-bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+router = APIRouter(prefix="/token", tags=["authentication"])
+bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 async def authenticate_user(db: AsyncSession, email: str, password: str):
     user = await db.scalar(select(Users).where(Users.email == email))
@@ -44,11 +45,13 @@ async def authenticate_user(db: AsyncSession, email: str, password: str):
         )
     return user
 
+
 def create_access_token(data: dict, expires_delta: timedelta = timedelta(minutes=30)):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + expires_delta
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
@@ -61,26 +64,26 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     except jwt.PyJWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
+
 @router.post("/")
 @limiter.limit("5/minute")
 async def login_for_access_token(
     request: Request,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Annotated[AsyncSession, Depends(get_db)]
-):  
-    log_limit_exceeded(request)
-    # Используем username как email
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-    
-    access_token = create_access_token(
-        data={"sub": user.email, "id": user.id}
-    )
-    
+
+    access_token = create_access_token(data={"sub": user.email, "id": user.id})
+
     return {"access_token": access_token, "token_type": "bearer"}
+
 
 @router.get("/me")
 @limiter.limit("5/minute")
-async def read_users_me(request: Request, current_user: Annotated[dict, Depends(get_current_user)]):
+async def read_users_me(
+    request: Request, current_user: Annotated[dict, Depends(get_current_user)]
+):
     return current_user
