@@ -16,6 +16,7 @@ from app.services.kafka_service import get_kafka_producer
 from app.services.redis_service import get_redis
 from loguru import logger
 from celery import Celery
+from app.main import limiter
 import time
 
 from app.database.db_depends import get_db
@@ -25,6 +26,7 @@ from app.models.orders import Orders
 
 router = APIRouter(prefix='/orders', tags=['orders'])
 
+@limiter.limit("5/minute")
 @router.post('/', status_code=status.HTTP_201_CREATED)
 async def create_order(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -78,7 +80,8 @@ async def create_order(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail=f"Error creating order: {str(e)}"
         )
-    
+
+@limiter.limit("5/minute")
 @router.get("/{order_id}", status_code=200)
 async def get_order(
     order_id: UUID,
@@ -111,6 +114,7 @@ async def get_order(
     
     return order_dict
 
+@limiter.limit("5/minute")
 @router.put('/{order_id}')
 async def update_product(
     db: Annotated[Session, Depends(get_db)], 
