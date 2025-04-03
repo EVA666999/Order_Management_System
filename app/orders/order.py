@@ -27,7 +27,7 @@ from app.models.orders import Orders
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_order(
     request: Request,
@@ -36,7 +36,7 @@ async def create_order(
     kafka_producer: Annotated[AIOKafkaProducer, Depends(get_kafka_producer)],
     current_user: Annotated[dict, Depends(get_current_user)],
 ):
-    logger.info(f"Creating order with data: {create_order}")
+    logger.info(f"Order creation request from IP: {request.client.host}")
     try:
         new_order = Orders(
             user_id=current_user["id"],
