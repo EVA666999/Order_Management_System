@@ -37,6 +37,10 @@ POSTGRES_PASSWORD_local=your_password
 POSTGRES_DB_local=your_postgresdb
 DB_HOST_local=postgres
 DB_PORT_local=5432
+Для генерации SECRET_KEY используйте
+import secrets
+secret_key = secrets.token_hex(32)
+print(secret_key)
 SECRET_KEY=your_secret_key_here
 ```
 
