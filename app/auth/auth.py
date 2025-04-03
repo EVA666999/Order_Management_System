@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, Form, Request, status, HTTPException
 from sqlalchemy import select, insert
 from typing import Annotated
 from app.rate_limiter import limiter
+from slowapi.errors import RateLimitExceeded
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from datetime import datetime, timedelta, timezone
@@ -78,5 +80,13 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me")
-async def read_users_me(current_user: Annotated[dict, Depends(get_current_user)]):
+@limiter.limit("5/minute")
+async def read_users_me(request: Request, current_user: Annotated[dict, Depends(get_current_user)]):
     return current_user
+
+@router.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"error": "Too Many Requests"}
+    )
