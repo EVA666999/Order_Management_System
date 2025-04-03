@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.auth import auth, register
 from app.orders import order
 from loguru import logger
+from fastapi.responses import JSONResponse
 from uuid import uuid4
 import time
 
@@ -18,7 +19,16 @@ from .rate_limiter import limiter
 app = FastAPI()
 
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.exception_handler(RateLimitExceeded)
+async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={
+            "error": "Too Many Requests",
+            "detail": f"Rate limit exceeded. Try again in {exc.retry_after} seconds."
+        }
+    )
 
 # Настройка CORS
 origins = [
