@@ -18,7 +18,6 @@ from loguru import logger
 from celery import Celery
 from app.rate_limiter import limiter
 import time
-from app.main import app
 
 from app.database.db_depends import get_db
 from app.schemas import CreateOrder, UpdateStatus
@@ -28,7 +27,7 @@ from app.models.orders import Orders
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
-@app.state.limiter.limit("5/minute")
+@limiter.limit("5/minute")
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_order(
     request: Request,

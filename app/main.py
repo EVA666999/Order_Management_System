@@ -5,14 +5,11 @@ from app.orders import order
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from loguru import logger
-from slowapi.util import get_remote_address
 
 from .rate_limiter import limiter
-
-limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI()
 
@@ -22,7 +19,6 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
-
 
 app.add_middleware(
     CORSMiddleware,
