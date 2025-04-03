@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, Form, status, HTTPException
+from fastapi import APIRouter, Depends, Form, Request, status, HTTPException
 from sqlalchemy import select, insert
 from typing import Annotated
 from app.rate_limiter import limiter
@@ -62,6 +62,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
 @router.post("/")
 @limiter.limit("5/minute")
 async def login_for_access_token(
+    request: Request,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[AsyncSession, Depends(get_db)]
 ):

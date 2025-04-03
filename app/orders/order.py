@@ -1,7 +1,7 @@
 from datetime import datetime
 import json
 from aiokafka import AIOKafkaProducer
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, Request, status, HTTPException
 from sqlalchemy.orm import Session
 from typing import Annotated
 from sqlalchemy import and_, delete, insert, or_, select, update
@@ -16,7 +16,7 @@ from app.services.kafka_service import get_kafka_producer
 from app.services.redis_service import get_redis
 from loguru import logger
 from celery import Celery
-from app.main import limiter
+from app.rate_limiter import limiter
 import time
 
 from app.database.db_depends import get_db
@@ -29,6 +29,7 @@ router = APIRouter(prefix='/orders', tags=['orders'])
 @limiter.limit("10/minute")
 @router.post('/', status_code=status.HTTP_201_CREATED)
 async def create_order(
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     create_order: CreateOrder,
     kafka_producer: Annotated[AIOKafkaProducer, Depends(get_kafka_producer)],
@@ -84,6 +85,7 @@ async def create_order(
 @limiter.limit("20/minute")
 @router.get("/{order_id}", status_code=200)
 async def get_order(
+    request: Request,
     order_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     redis_client: Annotated[redis.Redis, Depends(get_redis)],
@@ -117,6 +119,7 @@ async def get_order(
 @limiter.limit("5/minute")
 @router.put('/{order_id}')
 async def update_product(
+    request: Request,
     db: Annotated[Session, Depends(get_db)], 
     order_id: UUID,
     update_status: UpdateStatus,

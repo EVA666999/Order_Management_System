@@ -1,8 +1,8 @@
 
-from fastapi import APIRouter, Depends,status
+from fastapi import APIRouter, Depends, Request,status
 from sqlalchemy import select, insert
 from typing import Annotated
-from app.main import limiter
+from app.rate_limiter import limiter
 
 
 
@@ -24,7 +24,10 @@ bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
 @limiter.limit("3/minute")
 @router.post('/')
-async def create_user(db: Annotated[AsyncSession, Depends(get_db)], create_user: CreateUser):
+async def create_user(
+    request: Request,
+    db: Annotated[AsyncSession, 
+        Depends(get_db)], create_user: CreateUser):
     await db.execute(insert(Users).values(
         email=create_user.email,
         password=bcrypt_context.hash(create_user.password),
