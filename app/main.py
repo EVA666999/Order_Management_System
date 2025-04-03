@@ -8,28 +8,20 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from loguru import logger
+from slowapi.util import get_remote_address
 
 from .rate_limiter import limiter
 
-app = FastAPI()
-app = FastAPI()
+limiter = Limiter(key_func=get_remote_address)
 
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
+app = FastAPI()
 
 @app.exception_handler(RateLimitExceeded)
-async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    return _rate_limit_exceeded_handler(request, exc)
 
-    logger.warning(f"Rate limit exceeded for IP: {request.client.host}")
-    return JSONResponse(
-        status_code=429,
-        content={
-            "error": "Too Many Requests",
-            "detail": "Rate limit exceeded. Please try again later.",
-            "client_ip": request.client.host
-        }
-    )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 
 app.add_middleware(
